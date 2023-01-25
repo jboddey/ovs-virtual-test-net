@@ -1,0 +1,22 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+cd $ROOT
+
+port_no=$1
+bridge=tr-dev-$port_no
+bridge_intf=tr-dev-data-$port_no
+
+# TODO: Get all containers belonging to port
+container_intf=tr-dev-gw-$port_no
+
+
+echo Removing device bridge
+ovs-vsctl del-br $bridge
+
+echo Removing remaining interfaces
+
+ip link del dev $bridge_intf
+ip link del dev $container_intf
+
+echo Removed infrastructure for port $port_no

@@ -1,0 +1,41 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+INST_DIR=inst
+SYSTEM_CONF=config/system.json
+
+cd $ROOT
+
+# Clean up existing network if required
+cmd/net_clean
+
+# Obtain system variables
+CTRL_IFACE=$( jq -r .ctrl_intf $SYSTEM_CONF )
+CTRL_IP=$( jq -r .ctrl_ip $SYSTEM_CONF )
+DATA_IFACE=$( jq -r .data_intf $SYSTEM_CONF )
+CTRL_BRIDGE=tr-ctrl
+DATA_BRIDGE=$( jq -r .data_bridge $SYSTEM_CONF )
+
+echo Creating bridge $CTRL_BRIDGE
+ovs-vsctl add-br $CTRL_BRIDGE
+ip link set dev $CTRL_BRIDGE up
+
+echo Creating bridge $DATA_BRIDGE
+ovs-vsctl add-br $DATA_BRIDGE
+ip link set dev $DATA_BRIDGE up
+
+echo Adding $CTRL_IFACE to control bridge
+ovs-vsctl add-port $CTRL_BRIDGE $CTRL_IFACE
+
+echo Adding $DATA_IFACE to data bridge
+ovs-vsctl add-port $DATA_BRIDGE $DATA_IFACE
+
+# Remove IP from interfaces
+ifconfig $CTRL_IFACE 0.0.0.0
+ifconfig $DATA_IFACE 0.0.0.0
+
+# Set IP on bridge
+echo Setting addr of $CTRL_BRIDGE to $CTRL_IP
+ifconfig $CTRL_BRIDGE $CTRL_IP
+
+echo Network ready

@@ -1,0 +1,5 @@
+#!/bin/bash -e
+
+echo Run NMAP
+
+python3 net_services.py

@@ -1,0 +1,52 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+cd $ROOT
+
+INST_DIR=inst
+SYSTEM_CONF=config/system.json
+
+container_name=$1
+port_no=$2
+
+ctrl_bridge=tr-ctrl
+container_intf=tr-ctrl-$container_name
+echo $container_intf
+bridge_intf=tr-ctrl-$port_no
+echo $bridge_intf
+
+echo Creating ip link interfaces between control bridge and container
+echo "ip link add $bridge_intf type veth peer name $container_intf"
+ip link add $bridge_intf type veth peer name $container_intf
+
+echo Adding device port to bridge
+ovs-vsctl add-port $ctrl_bridge $bridge_intf
+
+echo Retrieving PID for container
+pid="$(docker inspect -f '{{.State.Pid}}' tr-$container_name)"
+echo PID of container is $pid
+
+# TODO: Check if symlink already exists
+echo Creating symlink for net namespace
+#ln -sf /proc/$pid/ns/net /var/run/netns/tr-$container_name
+
+echo Attaching $container_intf to container net namespace
+ip link set $container_intf netns tr-$container_name
+ip link set dev $bridge_intf up
+
+echo Renaming $container_intf to eth0
+ip netns exec tr-$container_name ip link set dev $container_intf name eth0
+
+#echo Setting eth0 mac address to 9a:02:57:1e:8f:0$PORT
+#ip netns exec $container_name ip link set dev eth0 address 9a:02:57:1e:8f:0$PORT
+
+echo Set IP for container interface
+# TODO: This needs to be customisable (not just gateway containers are being created)
+## Will this device get an IP via DHCP???
+# ip netns exec tr-$container_name ip addr add 10.20.$port_no.1/24 dev eth1
+
+echo Setting the interfaces up
+ip link set dev $bridge_intf up
+
+echo Setting container interface up
+ip netns exec tr-$container_name ip link set dev eth0 up

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+op="${1:-op}"
+mac="${2:-mac}"
+ip="${3:-ip}"
+hostname="${4}"
+tstamp="`date '+%Y-%m-%d %H:%M:%S'`"
+

@@ -1,0 +1,37 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+cd $ROOT
+
+build_dir=docker/modules
+build_root=build
+
+rm -rf $build_root
+mkdir -p $build_root
+
+MODULES_CONF=config/modules.json
+
+function build_module() {
+    name=$1
+    build_file=$2
+    log_file=$build_root/$name.log
+    tag=test-run/$name
+    echo Build $build_file into $tag, log to $log_file...
+    docker build -t $tag -f $build_file . > $log_file
+}
+
+# Build network containers
+for build_file in $build_dir/*; do
+    module="$(echo $build_file | cut -d'.' -f2)"
+    build_module $module $build_file
+done
+
+# Build test containers
+jq -r -c '.modules[]' $MODULES_CONF | while read module_json; do
+    module_name=$( jq -r '.name_short' <<< "$module_json" )
+    module_build_file=$( jq -r '.build_file' <<< "$module_json" )
+    build_module $module_name $module_build_file
+done
+
+echo Done with docker build
+exit 0

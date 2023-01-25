@@ -1,0 +1,25 @@
+#!/bin/bash -e
+
+# Move to correct path
+ROOT=$(dirname $0)/..
+cd $ROOT
+
+# Clean existing run data
+rm -rf inst
+
+# Activate python environment
+source venv/bin/activate
+
+# Setup network
+cmd/net_setup
+
+python3 -u framework/runner.py
+
+# Remove all containers and clear network
+cmd/net_clean
+
+echo "Done"
+exit 0
+
+
+

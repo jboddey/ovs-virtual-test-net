@@ -1,0 +1,67 @@
+#!/bin/bash
+
+CONFIG_FILE=/etc/dnsmasq.conf
+PID_FILE=/var/run/dnsmasq.pid
+EXT_INTF=eth0
+LOCAL_INTF=eth1
+PORT=${PORT_NO}
+
+echo Starting networking on port $PORT
+
+echo Setting DHCP range to 10.20.$PORT.10 to 10.20.$PORT.20
+echo dhcp-range=10.20.$PORT.10,10.20.$PORT.20,500s >> /etc/dnsmasq.conf
+
+# Wait for external interface to be created
+while ! ip link show $EXT_INTF; do
+    echo $EXT_INTF is not yet ready. Waiting 5 seconds
+    sleep 5
+done
+
+# Start dhclient if external interface does not have IP
+if ! ip addr show $EXT_INTF | fgrep 'inet '; then
+    echo No inet address for $EXT_INTF, initiating dhcp...
+    dhclient $EXT_INTF
+fi
+
+# Wait for local interface to be ready
+while ! ip link show $LOCAL_INTF; do
+    sleep 5
+done
+
+# Enable NAT to the outside world
+echo 1 > /proc/sys/net/ipv4/ip_forward
+iptables -t nat -A POSTROUTING -o $EXT_INTF -j MASQUERADE
+iptables -A FORWARD -i $EXT_INTF -o $LOCAL_INTF -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $LOCAL_INTF -o $EXT_INTF -j ACCEPT
+
+# Restart dnsmasq when config changes
+while true; do
+
+    new_checksum=$(md5sum $CONFIG_FILE)
+
+    if [ "$checksum" == "$new_checksum" ]; then
+        sleep 2
+        continue
+    fi
+
+    echo Config changed. Restarting dnsmasq at $(date)..
+
+    if [ -f $PID_FILE ]; then
+        kill -9 $(cat $PID_FILE) || true
+        rm -f $PID_FILE
+    fi
+
+    checksum=$new_checksum
+
+    echo Starting dnsmasq at $(date)
+
+    dnsmasq --log-facility=/var/log/dnsmasq.log &
+
+    while [ ! -f $PID_FILE ]; do
+        echo Waiting for $PID_FILE...
+        sleep 2
+    done
+
+    echo $PID_FILE now available
+
+done

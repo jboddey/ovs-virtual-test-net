@@ -1,0 +1,42 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+cd $ROOT
+
+SYSTEM_CONF=config/system.json
+CTRL_BRIDGE=tr-ctrl
+
+# Obtain system variables
+DATA_BRIDGE=$( jq -r .data_bridge $SYSTEM_CONF )
+CTRL_IFACE=$( jq -r .ctrl_intf $SYSTEM_CONF )
+CTRL_IP=$( jq -r .ctrl_ip $SYSTEM_CONF )
+DATA_IFACE=$( jq -r .data_intf $SYSTEM_CONF )
+
+echo Stopping running containers
+containers=$(docker ps --format '{{.Names}}')
+for container in $containers; do
+    docker stop $container || true
+done
+
+echo Removing $CTRL_BRIDGE bridge
+ovs-vsctl --if-exists del-br $CTRL_BRIDGE
+
+echo Removing $DATA_BRIDGE bridge
+ovs-vsctl --if-exists del-br $DATA_BRIDGE
+
+echo Restoring IP of interface $CTRL_IFACE
+ifconfig $CTRL_IFACE $CTRL_IP
+
+echo Removing device bridges
+for bridge in `ovs-vsctl list-br`; do
+    ovs-vsctl --if-exists del-br $bridge
+done
+
+echo Removing any remaining interfaces
+for link in `ip link | grep -oP '(?<=\w: )(tr-.+)(?=@)'`; do
+    echo Removing $link
+    ip link del $link || echo "Interface not found. Skipping.."
+done
+
+echo Network restored
+

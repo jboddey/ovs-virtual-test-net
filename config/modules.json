@@ -1,0 +1,10 @@
+{
+    "modules": [
+        {
+            "name": "Network",
+            "name_short": "network",
+            "module_url": "test/net_services",
+            "build_file": "test/net_services/Dockerfile.net_services"
+        }
+    ]
+}

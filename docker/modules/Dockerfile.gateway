@@ -1,0 +1,19 @@
+# Image name: test-run/gateway
+
+FROM test-run/base:latest
+
+# Install dnsmasq
+RUN apt-get install -y dnsmasq isc-dhcp-client iptables
+
+# Expose ports
+EXPOSE 53/udp
+
+COPY docker/include/dhcp/dnsmasq.conf /etc/dnsmasq.conf
+COPY docker/include/dhcp/start_networking start_networking
+COPY docker/include/dhcp/dhcp_callback dhcp_callback
+
+RUN chmod u+x start_networking
+RUN chmod u+x dhcp_callback
+
+# Start networking
+ENTRYPOINT ["./start_networking"]

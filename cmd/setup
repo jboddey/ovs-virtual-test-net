@@ -1,0 +1,32 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+INST_DIR=inst
+
+cd $ROOT
+
+sudo apt-get install jq python3 python3-pip openvswitch-common openvswitch-switch tcpdump
+
+# Install python dependencies
+
+PYTHON_VERSION=$(python3 --version 2>&1)
+
+if [[ -z "$PYTHON_VERSION" ]]; then
+    echo "Python 3 is not installed"
+    exit 1
+fi
+
+echo Python version is $PYTHON_VERSION
+#python3 -m pip install venv
+
+#python3 -m venv venv
+
+source venv/bin/activate
+PYTHON_REQUIREMENTS_FILE=etc/requirements.txt
+while read requirement; do
+    python3 -m pip install $requirement
+done < "$PYTHON_REQUIREMENTS_FILE"
+
+deactivate
+
+echo Setup is complete

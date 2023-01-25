@@ -1,0 +1,6 @@
+{
+    "data_intf": "enx00e04c01137b",
+    "data_bridge": "tr-data",
+    "ctrl_intf": "eno1",
+    "ctrl_ip": "10.0.100.115/24"
+}

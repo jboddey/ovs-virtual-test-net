@@ -1,0 +1,41 @@
+#!/bin/bash -e
+
+ROOT=$(dirname $0)/..
+INST_DIR=inst
+
+cd $ROOT
+
+# Obtain system variables
+SYSTEM_CONF=config/system.json
+DATA_BRIDGE=$( jq -r .data_bridge $SYSTEM_CONF )
+
+port_no=$1
+## TODO: Do some logic to support anything over max
+vlan=10$port_no
+ctrl_bridge=tr-ctrl
+bridge=tr-dev-$port_no
+data_iface=tr-data-$port_no
+device_iface=tr-dev-data-$port_no
+
+# Create OVS bridge
+ovs-vsctl add-br $bridge
+
+echo Creating ip link interfaces
+ip link add $data_iface type veth peer name $device_iface
+
+echo Adding port to data plane
+ovs-vsctl add-port $DATA_BRIDGE $data_iface tag=$vlan
+
+echo Adding port to device bridge
+ovs-vsctl add-port $bridge $device_iface
+
+echo Setting mac address for device bridge
+ip link set dev $bridge address 9a:02:57:1e:8f:00
+
+echo Setting IP for device bridge
+ip addr add 10.20.$port_no.254/24 dev $bridge
+
+echo Bringing interfaces up
+ip link set $bridge up
+ip link set $data_iface up
+ip link set $device_iface up

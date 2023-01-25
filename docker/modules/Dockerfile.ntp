@@ -1,0 +1,17 @@
+# Image name: test-run/ntp
+
+FROM alpine:3.17
+
+ENV TZ=UTC
+
+RUN apk add --update tzdata --no-cache &&\
+    cp /usr/share/zoneinfo/${TZ} /etc/localtime &&\
+    echo $TZ > /etc/timezone
+
+RUN apk add --no-cache chrony && mkdir -p /etc/chrony
+
+# Expose ports
+EXPOSE 123/udp
+
+# Start chronyd
+ENTRYPOINT ["/usr/sbin/chronyd", "-d", "-s", "-x"]
